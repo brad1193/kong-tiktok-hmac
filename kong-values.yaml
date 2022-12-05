@@ -1,0 +1,28 @@
+image:
+  repository: kong
+  tag: "3.0.1"
+manager:
+  enabled: true
+  http:
+    enabled: true
+    servicePort: 8002
+    containerPort: 8002
+  admin:
+    enabled: true
+    http:
+      enabled: true
+      servicePort: 8001
+      containerPort: 8001
+env:
+  database: "off"
+  log_level: "debug"
+ingressController:
+  enabled: false
+  installCRDs: false  
+dblessConfig:
+  configMap: "kong-config"
+plugins:
+  configMaps:
+    - pluginName: hmac-auth-tiktok
+      name: hmac-auth-tiktok
+

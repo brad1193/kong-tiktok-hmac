@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hmac-auth-tiktok
+  namespace: default
+data:
+  schema.lua: |
+    return {
+      name = "hmac-auth-callrail",
+      fields = {
+        { config = {
+          type = "record",
+          fields = {
+          { secret = { type = "string" }, },
+          { skew = { type = "number", default = 300, gt = 0 }, },
+          },
+        }, },
+      },
+    }
+  access.lua: |
+    local openssl_hmac = require "resty.openssl.hmac"
+    local sha256 = require "resty.sha256"
+    local utils = require "kong.tools.utils"
+
+    local string_lower = string.lower
+    local kong_request = kong.request
+    local time = ngx.time
+
+    local function get_signature(header)
+      kong.log.debug("f_get_signature running")
+      local signature = utils.split(header, ",")
+      kong.log.debug("get_signature: " .. signature[2])
+      local signature = utils.split(signature[2], "=")
+      return signature
+    end
+
+    local function get_timestamp(header)
+      kong.log.debug("get_timestamp: " .. header)
+      local sig = utils.split(header, ",")
+      kong.log.debug(sig[1])
+      local timestamp = utils.split(sig[1], '=')[2]
+      kong.log.debug(timestamp)
+      return timestamp
+    end
+
+    local function generate_sha256_hmac(header, body, secret)
+      local timestamp = get_timestamp(header)
+      kong.log.debug("hmac_timestamp: " .. timestamp)
+      local ts_body = timestamp .. '.' .. body
+      kong.log.debug("Timestamp and Body: " .. ts_body)
+      kong.log.debug(secret)
+      local hmac = openssl_hmac.new(secret, "sha256"):final(ts_body)
+      return hmac
+    end
+
+    local function validate_signature(header, hmac)
+      local signature = get_signature(header)
+      return hmac == signature
+    end
+
+    local function validate_timestamp(header, ts_skew)
+      local timestamp = get_timestamp(header)
+      local now = time()
+      local skew = now - timestamp
+      return (skew <= ts_skew)
+    end
+
+    local _M = {}
+
+    function _M.execute(conf)
+      local header = kong_request.get_header('tiktok-signature')
+      if header == nil then
+        return kong.response.exit(403, "Forbidden")
+      end
+      local body = kong_request.get_raw_body()
+      kong.log.debug("Main_body: " .. body)
+      kong.log.debug(conf.secret)
+      local hmac = generate_sha256_hmac(header, body, conf.secret)
+      kong.log.debug("Main_hmac: " .. hmac)
+      local ok = validate_signature(hmac)
+      local clock_skew = validate_timestamp(header, conf.skew)
+      if not ok then
+        return kong.response.exit(401, "Unauthorized")
+      end
+      if not clock_skew then
+        return kong.response.exit(401, "Unauthorized")
+      end
+    end
+
+    return _M
+  handler.lua: |
+    local access = require "kong.plugins.hmac-auth-tiktok.access"
+    local kong_meta = require "kong.meta"
+
+    local HMACAuthHandler = {
+      VERSION = kong_meta.version,
+      PRIORITY = 0,
+    }
+
+    function HMACAuthHandler:access(conf)
+      access.execute(conf)
+    end
+
+    return HMACAuthHandler
