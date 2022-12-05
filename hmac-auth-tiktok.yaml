@@ -27,19 +27,21 @@ data:
     local time = ngx.time
 
     local function get_signature(header)
-      kong.log.debug("f_get_signature running")
-      local signature = utils.split(header, ",")
-      kong.log.debug("get_signature: " .. signature[2])
-      local signature = utils.split(signature[2], "=")
+      local sig = utils.split(header, ",")
+      if sig[1] == nil then
+        kong.log.debug("Signature is nil value")
+      end
+      local signature = utils.split(sig[1], "=")
       return signature
     end
 
     local function get_timestamp(header)
       kong.log.debug("get_timestamp: " .. header)
       local sig = utils.split(header, ",")
-      kong.log.debug(sig[1])
+      if sig[1] == nil then
+        kong.log.debug("Timestamp from signature is nil value")
+      end
       local timestamp = utils.split(sig[1], '=')[2]
-      kong.log.debug(timestamp)
       return timestamp
     end
 
@@ -80,9 +82,11 @@ data:
       local ok = validate_signature(hmac)
       local clock_skew = validate_timestamp(header, conf.skew)
       if not ok then
+        kong.log.debug("Signature not valid")
         return kong.response.exit(401, "Unauthorized")
       end
       if not clock_skew then
+        kong.log.debug("Timestamp not valid")
         return kong.response.exit(401, "Unauthorized")
       end
     end
