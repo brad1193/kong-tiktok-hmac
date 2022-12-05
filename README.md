@@ -12,7 +12,7 @@
 ```
 kubectl create -f kong-config.yaml && helm install kong-local -f kong-values.yaml kong/kong
 ```
-#### To create the kong-config configmap and install the helm chart the hmac plugin enabled.
+##### To create the kong-config configmap and install the helm chart the hmac plugin enabled.
 
-#### The `hmac-auth-tiktok.yaml` file contains the actual plugin to be loaded as a config map.
-#### The `update.sh` script can be used to update the configmap and restart kong.
+##### The `hmac-auth-tiktok.yaml` file contains the actual plugin to be loaded as a config map.
+##### The `update.sh` script can be used to update the configmap and restart kong.
