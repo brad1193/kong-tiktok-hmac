@@ -12,7 +12,7 @@ data:
       - name: hmac-auth-tiktok
         service: example-service
         config:
-          secret: "072e77e426f92738a72fe23c4d1953b4"
+          secret: "***************************"
 
     services:
       - name: example-service
