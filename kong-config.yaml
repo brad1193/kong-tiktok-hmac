@@ -1,0 +1,25 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-config
+  namespace: default
+data:
+  kong.yml: |
+    _format_version: "1.1"
+
+    plugins:
+      - name: hmac-auth-tiktok
+        service: example-service
+        config:
+          secret: "072e77e426f92738a72fe23c4d1953b4"
+
+    services:
+      - name: example-service
+        url: https://mockbin.org
+        routes:
+          - name: jspath
+            paths:
+              - /
+        plugins:
+          - name: hmac-auth-tiktok
